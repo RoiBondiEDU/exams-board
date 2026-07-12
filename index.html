@@ -38,6 +38,15 @@
                     <p class="text-xs text-slate-400 mt-0.5">מסתנכרן בזמן אמת מול קובץ הניהול הבית-ספרי</p>
                 </div>
             </div>
+            
+            <!-- חיפוש מהיר -->
+            <div class="relative w-full sm:w-60">
+                <span class="absolute inset-y-0 right-3 flex items-center text-slate-500">
+                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                </span>
+                <input type="text" x-model="searchQuery" @input="updateData()" placeholder="חיפוש חופשי..."
+                       class="w-full bg-slate-800 border border-slate-700 rounded-xl py-1.5 pr-8 pl-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
+            </div>
         </div>
     </header>
 
@@ -127,54 +136,38 @@
             </div>
         </div>
 
-        <!-- אזור רשימת המבחנים הכרונולוגית -->
-        <div x-show="!loading && !error" x-cloak class="space-y-4">
-            <template x-for="event in filteredEvents" :key="event.dateStr + '-' + event.grade">
-                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 hover:border-indigo-500/30 transition duration-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div class="flex items-start gap-4 flex-1">
-                        <!-- תאריך -->
-                        <div class="bg-slate-800 border border-slate-700/80 rounded-xl p-2.5 text-center min-w-[85px] shrink-0 shadow-inner">
-                          <span class="text-[11px] text-slate-400 block font-medium" x-text="event.day"></span>
-                          <span class="text-sm font-extrabold text-indigo-300 tracking-wider" x-text="formatDateShort(event.dateStr)"></span>
-                        </div>
-
-                        <!-- פירוט האירוע -->
-                        <div class="space-y-2 flex-1">
-                            <div class="flex flex-wrap gap-2 items-center">
-                                <!-- תגית שכבה -->
-                                <span class="inline-flex items-center gap-1 text-[11px] font-bold bg-indigo-950/60 text-indigo-300 border border-indigo-800/50 px-2.5 py-0.5 rounded-full">
-                                    <i class="fa-solid fa-graduation-cap"></i>
-                                    <span x-text="'שכבת ' + event.grade"></span>
-                                </span>
-
-                                <!-- תגית חג/חופשה (במידה וקיים ונבחר להצגה) -->
-                                <template x-if="event.holiday">
-                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold bg-amber-950/60 text-amber-300 border border-amber-800/50 px-2.5 py-0.5 rounded-full">
-                                        <i class="fa-solid fa-umbrella-beach"></i>
-                                        <span x-text="event.holiday"></span>
-                                    </span>
-                                </template>
-                            </div>
-
-                            <!-- רשימת הבחינות לאותו היום -->
-                            <div class="space-y-2 pt-1">
-                                <template x-for="exam in getExamsForDay(event)" :key="exam.className">
-                                    <div class="text-sm font-bold text-slate-200 flex items-center gap-2.5 bg-slate-800/30 border border-slate-800 px-3 py-2 rounded-xl">
-                                        <i class="fa-solid fa-file-signature text-indigo-400 shrink-0"></i>
-                                        <span>
-                                            מבחן ב-<span class="text-indigo-200" x-text="exam.subject"></span>
-                                            <span class="text-slate-400 text-xs font-normal" x-text="'(' + exam.className + ')'"></span>
-                                        </span>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
+        <!-- אזור רשימת המבחנים הכרונולוגית (הכל בשורה אחת) -->
+        <div x-show="!loading && !error" x-cloak class="space-y-2">
+            <template x-for="row in filteredRows" :key="row.id">
+                <div class="bg-slate-900 border border-slate-800/80 rounded-xl px-4 py-3 hover:border-indigo-500/30 transition duration-200 flex items-center justify-between gap-3 text-sm">
+                    
+                    <!-- תאריך ויום -->
+                    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                        <span class="text-[11px] font-medium text-slate-400 w-11 text-right" x-text="row.day"></span>
+                        <span class="text-xs font-extrabold text-indigo-300 tracking-wider bg-slate-800 border border-slate-700/80 rounded-lg px-2 py-1 min-w-[50px] text-center" x-text="formatDateShort(row.dateStr)"></span>
                     </div>
+
+                    <!-- פירוט המבחן או האירוע -->
+                    <div class="flex-grow min-w-0 px-2">
+                        <p class="font-bold text-slate-200 truncate text-xs sm:text-sm" 
+                           :class="row.isHoliday ? 'text-amber-300 font-extrabold' : ''" 
+                           x-text="row.subject"></p>
+                    </div>
+
+                    <!-- כיתה / שכבה (מותאם דינמית) -->
+                    <div class="shrink-0">
+                        <span class="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border whitespace-nowrap"
+                              :class="row.isHoliday ? 'bg-amber-950/40 text-amber-300 border-amber-800/50' : 'bg-indigo-950/60 text-indigo-300 border-indigo-800/50'">
+                            <i class="fa-solid" :class="row.isHoliday ? 'fa-umbrella-beach text-[9px]' : 'fa-graduation-cap text-[9px]'"></i>
+                            <span x-text="row.target"></span>
+                        </span>
+                    </div>
+
                 </div>
             </template>
             
             <!-- הודעה כשאין מבחנים להצגה -->
-            <template x-if="filteredEvents.length === 0">
+            <template x-if="filteredRows.length === 0">
                 <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-12 text-center text-slate-400">
                     <i class="fa-solid fa-calendar-xmark text-2xl mb-2 text-slate-600"></i>
                     <p class="font-semibold text-slate-300">לא נמצאו מבחנים או אירועים מתאימים.</p>
@@ -207,10 +200,11 @@
                 loading: true,
                 error: null,
                 lastRefreshed: null,
+                searchQuery: '',
                 
                 allEvents: [],
                 gradeClasses: { 'ט': [], 'י': [], 'יא': [], 'יב': [] },
-                filteredEvents: [],
+                filteredRows: [],
 
                 initApp() {
                     this.fetchData();
@@ -332,59 +326,97 @@
                 },
 
                 updateData() {
-                    let tempEvents = [];
+                    let tempRows = [];
+                    let rowIdCounter = 1;
 
                     this.allEvents.forEach(event => {
-                        // 1. סינון לפי שכבה
+                        // 1. סינון שכבות
                         if (this.selectedGrade !== 'כלל בית הספר' && event.grade !== this.selectedGrade) {
                             return;
                         }
 
-                        // 2. מיפוי ובדיקת התאמת מבחנים לפי כיתה ספציפית
-                        let matchedExams = {};
-                        if (this.selectedGrade === 'כלל בית הספר' || this.selectedClass === 'כל השכבה') {
-                            matchedExams = event.exams;
-                        } else {
-                            if (event.exams[this.selectedClass]) {
-                                matchedExams[this.selectedClass] = event.exams[this.selectedClass];
-                            }
-                        }
-
-                        const hasMatchingExams = Object.keys(matchedExams).length > 0;
-                        const hasHoliday = !!event.holiday;
-
-                        // 3. החלטה האם להציג את היום לפי תיבת הסימון (צ'קבוקס חגים)
-                        let shouldDisplay = false;
-                        if (this.showHolidays) {
-                            shouldDisplay = hasMatchingExams || hasHoliday;
-                        } else {
-                            shouldDisplay = hasMatchingExams;
-                        }
-
-                        if (shouldDisplay) {
-                            tempEvents.push({
-                                ...event,
-                                matchedExams // נשמור את המבחנים שעברו את הסינון להצגה ממוקדת
+                        // 2. הוספת חג/חופשה במידה והצ'קבוקס דולק
+                        if (this.showHolidays && event.holiday) {
+                            tempRows.push({
+                                id: 'h-' + rowIdCounter++,
+                                day: event.day,
+                                dateStr: event.dateStr,
+                                date: event.date,
+                                subject: event.holiday,
+                                target: 'שכבת ' + event.grade,
+                                isHoliday: true,
+                                grade: event.grade
                             });
                         }
+
+                        // 3. קיבוץ מבחנים לפי נושא (Subject) כדי לזהות האם המבחן הוא שכבתי או כיתתי
+                        let subjectGroups = {}; // מבנה: { "מתמטיקה": ["ט1", "ט2"] }
+                        Object.entries(event.exams).forEach(([cls, subj]) => {
+                            // סינון לפי כיתה ספציפית אם נבחרה
+                            if (this.selectedClass !== 'כל השכבה' && cls !== this.selectedClass) {
+                                return;
+                            }
+                            if (!subjectGroups[subj]) {
+                                subjectGroups[subj] = [];
+                            }
+                            subjectGroups[subj].push(cls);
+                        });
+
+                        // 4. בניית שורת המבחן לפי חוקי התצוגה המבוקשים
+                        Object.entries(subjectGroups).forEach(([subj, classes]) => {
+                            if (classes.length === 0) return;
+
+                            let target = '';
+                            const totalClassesInGrade = this.gradeClasses[event.grade] || [];
+                            
+                            // בדיקה: האם המבחן משותף לכלל כיתות השכבה (למשל כל כיתות ט' נבחנות באנגלית באותו יום)
+                            const isAllClasses = totalClassesInGrade.length > 0 && 
+                                                 totalClassesInGrade.every(c => event.exams[c] === subj);
+
+                            if (isAllClasses && this.selectedClass === 'כל השכבה') {
+                                // אם זה לכל השכבה ומוגדר כ"כל השכבה" -> מציגים רק את שם השכבה
+                                target = 'שכבת ' + event.grade;
+                            } else {
+                                // אם זה ייחודי לכיתה או כיתות מסוימות -> מציגים רק את שמות הכיתות
+                                target = classes.join(', ');
+                            }
+
+                            // ניקוי כפילויות במקרה והנושא כבר מכיל את המילה "מבחן"
+                            const cleanSubject = subj.includes('מבחן') || subj.includes('בוחן') || subj.includes('הערכה')
+                                ? subj 
+                                : 'מבחן ב-' + subj;
+
+                            tempRows.push({
+                                id: 'e-' + rowIdCounter++,
+                                day: event.day,
+                                dateStr: event.dateStr,
+                                date: event.date,
+                                subject: cleanSubject,
+                                target: target,
+                                isHoliday: false,
+                                grade: event.grade
+                            });
+                        });
                     });
 
+                    // 5. סינון חופשי (חיפוש)
+                    if (this.searchQuery && this.searchQuery.trim() !== '') {
+                        const query = this.searchQuery.trim().toLowerCase();
+                        tempRows = tempRows.filter(row => 
+                            row.subject.toLowerCase().includes(query) ||
+                            row.target.toLowerCase().includes(query) ||
+                            row.dateStr.includes(query)
+                        );
+                    }
+
                     // מיון כרונולוגי של הלוח
-                    tempEvents.sort((a, b) => {
+                    tempRows.sort((a, b) => {
                         if (!a.date) return 1;
                         if (!b.date) return -1;
                         return a.date - b.date;
                     });
 
-                    this.filteredEvents = tempEvents;
-                },
-
-                getExamsForDay(event) {
-                    if (!event || !event.matchedExams) return [];
-                    return Object.entries(event.matchedExams).map(([cls, sub]) => ({
-                        className: cls,
-                        subject: sub
-                    }));
+                    this.filteredRows = tempRows;
                 },
 
                 formatDateShort(dateStr) {
