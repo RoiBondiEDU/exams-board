@@ -97,19 +97,19 @@
             <template x-for="event in filteredEvents" :key="event.id">
                 <div class="flex items-center justify-between gap-4 p-3 bg-gray-900/60 hover:bg-gray-900 border border-gray-800 hover:border-gray-700/80 rounded-xl transition duration-150">
                     
-                    <!-- Right: Unified Date & Day Box -->
+                    <!-- Right: Date & Day Box -->
                     <div class="flex items-center gap-2 bg-gray-800/80 border border-gray-700 px-3 py-1.5 rounded-lg shrink-0 text-xs sm:text-sm font-medium text-gray-200">
                         <span x-text="event.formattedDate"></span>
                         <span class="text-gray-500 font-normal">|</span>
                         <span x-text="event.dayOfWeek" class="text-emerald-400 font-bold"></span>
                     </div>
 
-                    <!-- Center: Subject Text (Exactly as written in sheet) -->
+                    <!-- Center: Subject Text -->
                     <div class="flex-1 min-w-0 text-right">
                         <span class="text-sm sm:text-base text-gray-100 font-medium block truncate" :title="event.title" x-text="event.title"></span>
                     </div>
 
-                    <!-- Left: Targeting Tag (Class / Layer / Holiday) -->
+                    <!-- Left: Target Class / Holiday Tag -->
                     <div class="shrink-0">
                         <span :class="event.isHoliday ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'" 
                               class="text-xs font-semibold px-2.5 py-1 rounded-md border" 
@@ -125,7 +125,8 @@
     <script>
         function examsApp() {
             return {
-                spreadsheetId: '1m94B_W5KlsA9-wGgP8fLz_b678B3Y48I9bT9GZp8vjE', // מזהה קובץ הגוגל שיטס שלכם
+                // מזהה הקובץ המעודכן שסיפקת
+                spreadsheetId: '1TIwnott9Y7pTugeQ5Il-U00dUe5GE6Mcc7lRqfxuCBM', 
                 loading: true,
                 error: null,
                 allEvents: [],
@@ -144,14 +145,14 @@
                     this.loading = true;
                     this.error = null;
 
-                    // שליפת הנתונים ישירות מכרטיסיית הריכוז "Looker"
+                    // פנייה ישירה לכרטיסיית הריכוז Looker בקובץ החדש
                     const queryUrl = `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}/gviz/tq?sheet=Looker&tq=SELECT*`;
                     const query = new google.visualization.Query(queryUrl);
 
                     query.send(response => {
                         this.loading = false;
                         if (response.isError()) {
-                            this.error = 'שגיאה במשיכת הנתונים. ודא שכרטיסיית Looker קיימת ושקובץ הגיליון ציבורי ופתוח לצפייה.';
+                            this.error = 'שגיאה במשיכת הנתונים. ודא שכרטיסיית Looker קיימת ושקובץ הגיליון מוגדר כציבורי ("כל מי שקיבל את הקישור יכול לצפות").';
                             return;
                         }
                         
@@ -162,7 +163,7 @@
                         for (let i = 0; i < numRows; i++) {
                             const dateValue = dataTable.getValue(i, 0);   // עמודה A: תאריך
                             const dayValue = dataTable.getValue(i, 1);    // עמודה B: יום בשבוע
-                            const classValue = dataTable.getValue(i, 2);  // עמודה C: כיתת יעד (למשל ט'1, ט'2, חופש)
+                            const classValue = dataTable.getValue(i, 2);  // עמודה C: כיתת יעד (למשל ט'1, ט'2)
                             const eventValue = dataTable.getValue(i, 3);  // עמודה D: המבחן / האירוע
 
                             if (!dateValue || !eventValue) continue;
@@ -173,15 +174,14 @@
                             const classStr = classValue ? String(classValue).trim() : '';
                             const eventStr = String(eventValue).trim();
 
-                            // זיהוי האם מדובר בחופשה/חג
+                            // בדיקה האם מדובר ביום חופש או חג
                             const isHoliday = classStr.includes('חופש') || classStr.includes('חג') || classStr.includes('כללי') || 
-                                              eventStr.includes('חופש') || eventStr.includes('חג');
+                                              eventStr.includes('חופש') || eventStr.includes('חג') || eventStr.includes('ניסיון');
 
-                            // זיהוי שכבה וכיתה מתוך עמודה C
                             let layer = 'all';
                             let specificClass = 'all';
 
-                            // בדיקה באמצעות ביטויים רגולריים (Regex) לחילוץ השכבה והכיתה
+                            // חילוץ חכם של השכבה והכיתה מתוך עמודה C באמצעות ביטויים רגולריים
                             if (/^ט[']?\d+/.test(classStr)) {
                                 layer = 'ט';
                                 specificClass = classStr;
@@ -195,16 +195,15 @@
                                 layer = 'יב';
                                 specificClass = classStr;
                             } else {
-                                // מקרים של הגדרה שכבתית רחבה (למשל "ט' כללי" או "שכבת יא'")
+                                // התאמה למקרים של שם שכבה כללי ללא מספר כיתה
                                 if (classStr.includes('ט')) layer = 'ט';
                                 else if (classStr.includes('יא')) layer = 'יא';
                                 else if (classStr.includes('יב')) layer = 'יב';
                                 else if (classStr.includes('י')) layer = 'י';
                             }
 
-                            // תגית המטרה שתופיע משמאל לשורה
                             let targetDisplay = classStr || 'כללי';
-                            if (isHoliday) {
+                            if (isHoliday && (classStr.includes('חופש') || classStr.includes('חג'))) {
                                 targetDisplay = 'חופשה / מועד';
                             }
 
@@ -221,9 +220,9 @@
                             });
                         }
 
-                        // מיון סופי לפי תאריך כרונולוגי
+                        // מיון האירועים לפי סדר כרונולוגי של תאריכים
                         this.allEvents = parsedEvents.sort((a, b) => a.dateObj - b.dateObj);
-                        this.handleLayerChange(); // אתחול כיתות אם יש שכבה מסומנת מראש
+                        this.handleLayerChange();
                     });
                 },
 
@@ -234,7 +233,7 @@
                         return;
                     }
                     
-                    // משיכת כלל הכיתות הייחודיות של השכבה שנבחרה
+                    // שליפת רשימת הכיתות הקיימות בשכבה שנבחרה כדי לעדכן את הדרופדאון השני
                     let classesSet = new Set();
                     this.allEvents
                         .filter(e => e.layer === this.selectedLayer && e.specificClass !== 'all')
@@ -245,16 +244,16 @@
 
                 get filteredEvents() {
                     return this.allEvents.filter(event => {
-                        // סינון ברירת מחדל של חגים וחופשות
+                        // סינון חופשות (מוסתרות כברירת מחדל)
                         if (!this.showHolidays && event.isHoliday) return false;
 
-                        // סינון לפי שכבה
+                        // סינון לפי השכבה שנבחרה
                         if (this.selectedLayer !== 'all' && event.layer !== this.selectedLayer) return false;
 
-                        // סינון לפי כיתה ספציפית
+                        // סינון לפי כיתה ספציפית בשכבה
                         if (this.selectedClass !== 'all' && event.specificClass !== 'all' && event.specificClass !== this.selectedClass) return false;
 
-                        // סינון לפי חיפוש חופשי
+                        // סינון לפי תיבת החיפוש החופשי
                         if (this.searchQuery.trim() !== '') {
                             const query = this.searchQuery.toLowerCase();
                             return event.title.toLowerCase().includes(query) || 
