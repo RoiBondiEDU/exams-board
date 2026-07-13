@@ -1,3 +1,19 @@
+צודק לגמרי! סליחה על הבלבול. בצילום המסך החדש רואים בבירור את כרטיסיית **`Looker`** – שהיא למעשה **כרטיסיית ריכוז אחת מרכזית** שבה כל השכבות והכיתות כבר מרוכזות יחד בשורות נפרדות!
+
+מבנה זה הופך את הקוד להרבה יותר פשוט, מהיר וחכם, מאחר ואין צורך לפנות ל-4 כרטיסיות שונות ולמזג ביניהן.
+
+### ניתוח מבנה כרטיסיית `Looker`:
+
+* **עמודה A** (אינדקס 0): תאריך (למשל `9/4/2026`)
+* **עמודה B** (אינדקס 1): יום בשבוע (למשל `שישי`)
+* **עמודה C** (אינדקס 2): כיתת יעד (למשל `ט'1`, `ט'2`...)
+* **עמודה D** (אינדקס 3): המבחן / האירוע כפי שהוא (למשל `כימיה`)
+
+---
+
+הנה הקוד המעודכן שקורא **אך ורק מכרטיסיית `Looker**` ומפענח בצורה דינמית וחכמה את השכבות והכיתות מתוך עמודה C:
+
+```html
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -104,12 +120,12 @@
                         <span x-text="event.dayOfWeek" class="text-emerald-400 font-bold"></span>
                     </div>
 
-                    <!-- Center: Subject Text -->
+                    <!-- Center: Subject Text (Exactly as written in sheet) -->
                     <div class="flex-1 min-w-0 text-right">
                         <span class="text-sm sm:text-base text-gray-100 font-medium block truncate" :title="event.title" x-text="event.title"></span>
                     </div>
 
-                    <!-- Left: Targeting Tag (Class / Layer) -->
+                    <!-- Left: Targeting Tag (Class / Layer / Holiday) -->
                     <div class="shrink-0">
                         <span :class="event.isHoliday ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'" 
                               class="text-xs font-semibold px-2.5 py-1 rounded-md border" 
@@ -137,86 +153,93 @@
 
                 init() {
                     google.charts.load('current', {'packages':['corechart']});
-                    google.charts.setOnLoadCallback(() => this.fetchAllLayers());
+                    google.charts.setOnLoadCallback(() => this.fetchLookerData());
                 },
 
-                async fetchAllLayers() {
+                fetchLookerData() {
                     this.loading = true;
                     this.error = null;
-                    const layers = [
-                        { name: 'ט', tab: 'שכבת ט' },
-                        { name: 'י', tab: 'שכבת י' },
-                        { name: 'יא', tab: 'שכבת יא' },
-                        { name: 'יב', tab: 'שכבת יב' }
-                    ];
 
-                    try {
-                        let promises = layers.map(layer => this.fetchLayerData(layer.name, layer.tab));
-                        let results = await Promise.all(promises);
-                        this.allEvents = results.flat().sort((a, b) => a.dateObj - b.dateObj);
-                    } catch (err) {
-                        this.error = 'שגיאה במשיכת הנתונים. ודא שקובץ הגוגל שיטס ציבורי ופתוח לצפייה.';
-                    } finally {
+                    // שליפת הנתונים ישירות מכרטיסיית הריכוז "Looker"
+                    const queryUrl = `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}/gviz/tq?sheet=Looker&tq=SELECT*`;
+                    const query = new google.visualization.Query(queryUrl);
+
+                    query.send(response => {
                         this.loading = false;
-                    }
-                },
+                        if (response.isError()) {
+                            this.error = 'שגיאה במשיכת הנתונים. ודא שכרטיסיית Looker קיימת ושקובץ הגיליון ציבורי ופתוח לצפייה.';
+                            return;
+                        }
+                        
+                        const dataTable = response.getDataTable();
+                        const numRows = dataTable.getNumberOfRows();
+                        const parsedEvents = [];
 
-                fetchLayerData(layerName, tabName) {
-                    return new Promise((resolve, reject) => {
-                        const queryUrl = `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}/gviz/tq?sheet=${encodeURIComponent(tabName)}&tq=SELECT*`;
-                        const query = new google.visualization.Query(queryUrl);
+                        for (let i = 0; i < numRows; i++) {
+                            const dateValue = dataTable.getValue(i, 0);   // עמודה A: תאריך
+                            const dayValue = dataTable.getValue(i, 1);    // עמודה B: יום בשבוע
+                            const classValue = dataTable.getValue(i, 2);  // עמודה C: כיתת יעד (למשל ט'1, ט'2, חופש)
+                            const eventValue = dataTable.getValue(i, 3);  // עמודה D: המבחן / האירוע
 
-                        query.send(response => {
-                            if (response.isError()) return resolve([]);
-                            
-                            const dataTable = response.getDataTable();
-                            const numRows = dataTable.getNumberOfRows();
-                            const parsedEvents = [];
+                            if (!dateValue || !eventValue) continue;
 
-                            for (let i = 0; i < numRows; i++) {
-                                const dateValue = dataTable.getValue(i, 0); // עמודה A: תאריך
-                                const dayValue = dataTable.getValue(i, 1);  // עמודה B: יום בשבוע
-                                const testValue = dataTable.getValue(i, 6); // עמודה G: מבחן
+                            let rawDate = this.parseGoogleDate(dateValue);
+                            if (!rawDate) continue;
 
-                                if (!dateValue || !testValue) continue;
+                            const classStr = classValue ? String(classValue).trim() : '';
+                            const eventStr = String(eventValue).trim();
 
-                                let rawDate = this.parseGoogleDate(dateValue);
-                                if (!rawDate) continue;
+                            // זיהוי האם מדובר בחופשה/חג
+                            const isHoliday = classStr.includes('חופש') || classStr.includes('חג') || classStr.includes('כללי') || 
+                                              eventStr.includes('חופש') || eventStr.includes('חג');
 
-                                const isHoliday = String(testValue).includes('חופש') || String(testValue).includes('חג');
+                            // זיהוי שכבה וכיתה מתוך עמודה C
+                            let layer = 'all';
+                            let specificClass = 'all';
 
-                                // סריקת עמודות הכיתות (C, D, E, F) לבדיקת שיבוץ ייחודי
-                                let targetClasses = [];
-                                for (let col = 2; col <= 5; col++) {
-                                    let cellVal = dataTable.getValue(i, col);
-                                    if (cellVal && String(cellVal).trim() !== '') {
-                                        let colLabel = dataTable.getColumnLabel(col) || `${layerName}${col-1}`;
-                                        targetClasses.push(colLabel);
-                                    }
-                                }
-
-                                // בניית תגית הייעוד (שכבה מול כיתה ספציפית)
-                                let targetDisplay = `שכבת ${layerName}'`;
-                                let specificClass = 'all';
-                                if (targetClasses.length === 1) {
-                                    targetDisplay = targetClasses[0];
-                                    specificClass = targetClasses[0];
-                                }
-
-                                parsedEvents.push({
-                                    id: `${layerName}-${i}-${rawDate.getTime()}`,
-                                    dateObj: rawDate,
-                                    formattedDate: this.formatDate(rawDate),
-                                    dayOfWeek: dayValue || this.getDayName(rawDate),
-                                    title: String(testValue).trim(),
-                                    layer: layerName,
-                                    specificClass: specificClass,
-                                    isHoliday: isHoliday,
-                                    targetDisplay: isHoliday ? 'חופשה / מועד' : targetDisplay
-                                });
+                            // בדיקה באמצעות ביטויים רגולריים (Regex) לחילוץ השכבה והכיתה
+                            if (/^ט[']?\d+/.test(classStr)) {
+                                layer = 'ט';
+                                specificClass = classStr;
+                            } else if (/^י[']?\d+/.test(classStr) && !classStr.startsWith('יא') && !classStr.startsWith('יב')) {
+                                layer = 'י';
+                                specificClass = classStr;
+                            } else if (/^יא[']?\d+/.test(classStr)) {
+                                layer = 'יא';
+                                specificClass = classStr;
+                            } else if (/^יב[']?\d+/.test(classStr)) {
+                                layer = 'יב';
+                                specificClass = classStr;
+                            } else {
+                                // מקרים של הגדרה שכבתית רחבה (למשל "ט' כללי" או "שכבת יא'")
+                                if (classStr.includes('ט')) layer = 'ט';
+                                else if (classStr.includes('יא')) layer = 'יא';
+                                else if (classStr.includes('יב')) layer = 'יב';
+                                else if (classStr.includes('י')) layer = 'י';
                             }
-                            resolve(parsedEvents);
-                        });
+
+                            // תגית המטרה שתופיע משמאל לשורה
+                            let targetDisplay = classStr || 'כללי';
+                            if (isHoliday) {
+                                targetDisplay = 'חופשה / מועד';
+                            }
+
+                            parsedEvents.push({
+                                id: `looker-${i}-${rawDate.getTime()}`,
+                                dateObj: rawDate,
+                                formattedDate: this.formatDate(rawDate),
+                                dayOfWeek: dayValue || this.getDayName(rawDate),
+                                title: eventStr,
+                                layer: layer,
+                                specificClass: specificClass,
+                                isHoliday: isHoliday,
+                                targetDisplay: targetDisplay
+                            });
+                        }
+
+                        // מיון סופי לפי תאריך כרונולוגי
+                        this.allEvents = parsedEvents.sort((a, b) => a.dateObj - b.dateObj);
+                        this.handleLayerChange(); // אתחול כיתות אם יש שכבה מסומנת מראש
                     });
                 },
 
@@ -226,7 +249,8 @@
                         this.availableClasses = [];
                         return;
                     }
-                    // מיפוי דינמי של כיתות ייחודיות הקיימות בשכבה שנבחרה
+                    
+                    // משיכת כלל הכיתות הייחודיות של השכבה שנבחרה
                     let classesSet = new Set();
                     this.allEvents
                         .filter(e => e.layer === this.selectedLayer && e.specificClass !== 'all')
@@ -246,7 +270,7 @@
                         // סינון לפי כיתה ספציפית
                         if (this.selectedClass !== 'all' && event.specificClass !== 'all' && event.specificClass !== this.selectedClass) return false;
 
-                        // סינון לפי חיפוש טקסט חופשי
+                        // סינון לפי חיפוש חופשי
                         if (this.searchQuery.trim() !== '') {
                             const query = this.searchQuery.toLowerCase();
                             return event.title.toLowerCase().includes(query) || 
@@ -283,3 +307,4 @@
     </script>
 </body>
 </html>
+
