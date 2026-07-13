@@ -3,470 +3,283 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>לוח מבחנים ואירועים</title>
+    <title>לוח בחינות ואירועים - תיכון דרכא</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts (Heebo) -->
-    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Alpine.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <!-- Google Visualization API -->
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Heebo', sans-serif;
-        }
+        body { font-family: 'Heebo', sans-serif; }
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-indigo-500 selection:text-white" 
-      x-data="app()" 
-      x-init="initApp()">
+<body class="bg-gray-950 text-gray-100 min-h-screen" x-data="examsApp()">
 
-    <!-- פאנל עליון / כותרת ראשית -->
-    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-4 py-4">
-        <div class="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+    <!-- Header Section -->
+    <header class="border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-50 px-4 py-4">
+        <div class="max-w-5xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            
+            <!-- Logo and Title -->
             <div class="flex items-center gap-4">
-                <!-- לוגו תיכון דרכא רקע לבן (1).jpeg -->
-                <div class="bg-white p-1 rounded-xl shadow-lg flex items-center justify-center">
-                    <img src="לוגו דרכא רקע לבן (1).jpeg" alt="לוגו תיכון דרכא" class="h-12 w-auto object-contain rounded-lg" onerror="this.style.display='none'" />
+                <div class="bg-white p-1.5 rounded-xl shadow-lg max-w-[150px] md:max-w-[180px]">
+                    <img src="לוגו דרכא רקע לבן (1).jpeg" alt="תיכון דרכא" class="w-full h-auto object-contain">
                 </div>
                 <div>
-                    <h1 class="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">
-                        לוח מבחנים שכבתי
-                    </h1>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-tight text-white">לוח בחינות ואירועים</h1>
                 </div>
             </div>
+
+            <!-- Filters Grid -->
+            <div class="flex flex-wrap items-center gap-3 bg-gray-900 p-2 rounded-xl border border-gray-800/80 w-full md:w-auto">
+                <!-- Dropdown: Layer -->
+                <div class="flex-1 sm:flex-initial min-w-[120px]">
+                    <select x-model="selectedLayer" @change="handleLayerChange()" class="w-full bg-gray-800 text-sm rounded-lg border border-gray-700 px-3 py-2 text-white focus:outline-none focus:border-emerald-500 transition">
+                        <option value="all">כלל בית הספר</option>
+                        <option value="ט">שכבת ט'</option>
+                        <option value="י">שכבת י'</option>
+                        <option value="יא">שכבת יא'</option>
+                        <option value="יב">שכבת יב'</option>
+                    </select>
+                </div>
+
+                <!-- Dropdown: Class -->
+                <div class="flex-1 sm:flex-initial min-w-[100px]">
+                    <select x-model="selectedClass" :disabled="selectedLayer === 'all'" class="w-full bg-gray-800 text-sm rounded-lg border border-gray-700 px-3 py-2 text-white focus:outline-none focus:border-emerald-500 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                        <option value="all">כל השכבה</option>
+                        <template x-for="cls in availableClasses" :key="cls">
+                            <option :value="cls" x-text="cls"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <!-- Input: Search -->
+                <div class="w-full sm:w-48 relative">
+                    <input type="text" x-model="searchQuery" placeholder="חיפוש חופשי..." class="w-full bg-gray-800 text-sm rounded-lg border border-gray-700 pr-8 pl-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition">
+                    <span class="absolute right-2.5 top-2.5 text-gray-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </span>
+                </div>
+
+                <!-- Toggle: Holidays -->
+                <label class="flex items-center gap-2 cursor-pointer select-none px-2 py-1.5 rounded-lg hover:bg-gray-800/60 transition">
+                    <input type="checkbox" x-model="showHolidays" class="rounded border-gray-700 text-emerald-500 bg-gray-800 focus:ring-0 focus:ring-offset-0 w-4 h-4">
+                    <span class="text-xs font-medium text-gray-300">הצג חגים וחופשות</span>
+                </label>
+            </div>
+
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto px-4 py-6">
-
-        <!-- פאנל סינונים ופקדים -->
-        <section class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 mb-6 space-y-5">
-            <div class="flex flex-col md:flex-row gap-5 items-stretch md:items-center justify-between">
-                <div class="flex flex-col sm:flex-row gap-4 flex-1">
-                    
-                    <!-- בחירת שכבה -->
-                    <div class="flex-1 max-w-xs">
-                        <label class="block text-xs font-bold text-slate-400 mb-2">שכבה:</label>
-                        <div class="relative">
-                            <select x-model="selectedGrade" @change="onGradeChange()"
-                                    class="w-full pr-4 pl-10 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer transition">
-                                <option value="כלל בית הספר">כלל בית הספר</option>
-                                <template x-for="g in grades" :key="g.id">
-                                    <option :value="g.id" x-text="'שכבת ' + g.id"></option>
-                                </template>
-                            </select>
-                            <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-500">
-                                <i class="fa-solid fa-chevron-down text-xs"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- בחירת כיתה -->
-                    <div class="flex-1 max-w-xs">
-                        <label class="block text-xs font-bold text-slate-400 mb-2" 
-                               :class="isClassDisabled ? 'opacity-40' : ''">כיתה:</label>
-                        <div class="relative" :class="isClassDisabled ? 'opacity-40' : ''">
-                            <select x-model="selectedClass" @change="updateData()" :disabled="isClassDisabled"
-                                    class="w-full pr-4 pl-10 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer disabled:cursor-not-allowed transition">
-                                <option value="כל השכבה">כל השכבה</option>
-                                <template x-for="cls in availableClasses" :key="cls">
-                                    <option :value="cls" x-text="cls"></option>
-                                </template>
-                            </select>
-                            <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-500">
-                                <i class="fa-solid fa-chevron-down text-xs"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- חיפוש מהיר (משמאל לכיתה) -->
-                    <div class="flex-1 max-w-xs">
-                        <label class="block text-xs font-bold text-slate-400 mb-2">חיפוש חופשי:</label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 right-3 flex items-center text-slate-500">
-                                <i class="fa-solid fa-magnifying-glass text-xs"></i>
-                            </span>
-                            <input type="text" x-model="searchQuery" @input="updateData()" placeholder="חפש מקצוע..."
-                                   class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pr-8 pl-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- סנכרון ואינדקציה -->
-                <div class="flex items-center justify-between md:justify-end gap-3 border-t md:border-t-0 pt-4 md:pt-0">
-                    <template x-if="lastRefreshed">
-                        <span class="bg-indigo-950/40 text-indigo-300 border border-indigo-900/40 px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            עודכן: <span x-text="lastRefreshed"></span>
-                        </span>
-                    </template>
-                    <button @click="fetchData(true)" :disabled="loading"
-                            class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-all duration-200 border border-slate-700 disabled:opacity-50">
-                        <i class="fa-solid fa-arrows-rotate" :class="loading ? 'animate-spin' : ''"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- פקד בחירה להצגת חגים וחופשות -->
-            <div class="pt-3 border-t border-slate-800/60 flex items-center">
-                <label class="flex items-center gap-3 cursor-pointer group select-none">
-                    <div class="relative">
-                        <input type="checkbox" x-model="showHolidays" @change="updateData()" class="sr-only peer">
-                        <div class="w-10 h-6 bg-slate-800 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-500 peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-1 after:right-1 after:bg-slate-400 peer-checked:after:bg-indigo-400 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-950/80 border border-slate-700 peer-checked:border-indigo-500"></div>
-                    </div>
-                    <span class="text-xs sm:text-sm font-semibold text-slate-300 group-hover:text-slate-100 transition">
-                        הצג חגים, אירועים וחופשות בית ספריות
-                    </span>
-                </label>
-            </div>
-        </section>
-
-        <!-- מסך טעינה -->
-        <div x-show="loading" class="bg-slate-900 border border-slate-800/80 rounded-2xl p-12 text-center my-6">
-            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-indigo-500 border-t-transparent mb-4"></div>
-            <p class="text-slate-300 font-bold">טוען ומסנכרן את נתוני המבחנים מכל השכבות...</p>
+    <!-- Main Content -->
+    <main class="max-w-5xl mx-auto px-4 py-6">
+        
+        <!-- Loading & Errors States -->
+        <div x-show="loading" class="flex flex-col items-center justify-center py-20 gap-3">
+            <div class="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-gray-400 text-sm">טוען נתונים ומסנכרן את הלוח...</p>
         </div>
 
-        <!-- הצגת שגיאה -->
-        <div x-show="error" x-cloak class="bg-rose-950/30 border border-rose-900/50 rounded-2xl p-6 mb-6 text-rose-300 flex items-start gap-3">
-            <i class="fa-solid fa-circle-exclamation text-xl shrink-0 mt-0.5"></i>
-            <div>
-                <h4 class="font-bold text-md mb-1">שגיאה בסנכרון הקובץ</h4>
-                <p class="text-sm opacity-90" x-text="error"></p>
-            </div>
+        <div x-show="!loading && error" class="bg-red-950/40 border border-red-800/60 text-red-200 p-4 rounded-xl text-center" x-text="error" x-cloak></div>
+
+        <!-- Empty State -->
+        <div x-show="!loading && filteredEvents.length === 0" class="text-center py-16 bg-gray-900/20 border border-gray-800/60 rounded-xl" x-cloak>
+            <p class="text-gray-400">לא נמצאו בחינות או אירועים העונים על סינון זה.</p>
         </div>
 
-        <!-- אזור רשימת המבחנים הכרונולוגית (הכל בשורה אחת) -->
-        <div x-show="!loading && !error" x-cloak class="space-y-2">
-            <template x-for="row in filteredRows" :key="row.id">
-                <div class="bg-slate-900 border border-slate-800/80 rounded-xl px-4 py-3 hover:border-indigo-500/30 transition duration-200 flex items-center justify-between gap-3 text-sm">
+        <!-- List Layout -->
+        <div x-show="!loading && filteredEvents.length > 0" class="space-y-2" x-cloak>
+            <template x-for="event in filteredEvents" :key="event.id">
+                <div class="flex items-center justify-between gap-4 p-3 bg-gray-900/60 hover:bg-gray-900 border border-gray-800 hover:border-gray-700/80 rounded-xl transition duration-150">
                     
-                    <!-- תאריך ויום -->
-                    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-                        <span class="text-[11px] font-medium text-slate-400 w-11 text-right" x-text="row.day"></span>
-                        <span class="text-xs font-extrabold text-indigo-300 tracking-wider bg-slate-800 border border-slate-700/80 rounded-lg px-2 py-1 min-w-[50px] text-center" x-text="formatDateShort(row.dateStr)"></span>
+                    <!-- Right: Unified Date & Day Box -->
+                    <div class="flex items-center gap-2 bg-gray-800/80 border border-gray-700 px-3 py-1.5 rounded-lg shrink-0 text-xs sm:text-sm font-medium text-gray-200">
+                        <span x-text="event.formattedDate"></span>
+                        <span class="text-gray-500 font-normal">|</span>
+                        <span x-text="event.dayOfWeek" class="text-emerald-400 font-bold"></span>
                     </div>
 
-                    <!-- פירוט המבחן או האירוע -->
-                    <div class="flex-grow min-w-0 px-2">
-                        <p class="font-bold text-slate-200 truncate text-xs sm:text-sm" 
-                           :class="row.isHoliday ? 'text-amber-300 font-extrabold' : ''" 
-                           x-text="row.subject"></p>
+                    <!-- Center: Subject Text -->
+                    <div class="flex-1 min-w-0 text-right">
+                        <span class="text-sm sm:text-base text-gray-100 font-medium block truncate" :title="event.title" x-text="event.title"></span>
                     </div>
 
-                    <!-- כיתה / שכבה (מותאם דינמית) -->
+                    <!-- Left: Targeting Tag (Class / Layer) -->
                     <div class="shrink-0">
-                        <span class="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border whitespace-nowrap"
-                              :class="row.isHoliday ? 'bg-amber-950/40 text-amber-300 border-amber-800/50' : 'bg-indigo-950/60 text-indigo-300 border-indigo-800/50'">
-                            <i class="fa-solid" :class="row.isHoliday ? 'fa-umbrella-beach text-[9px]' : 'fa-graduation-cap text-[9px]'"></i>
-                            <span x-text="row.target"></span>
+                        <span :class="event.isHoliday ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'" 
+                              class="text-xs font-semibold px-2.5 py-1 rounded-md border" 
+                              x-text="event.targetDisplay">
                         </span>
                     </div>
 
                 </div>
             </template>
-            
-            <!-- הודעה כשאין מבחנים להצגה -->
-            <template x-if="filteredRows.length === 0">
-                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-12 text-center text-slate-400">
-                    <i class="fa-solid fa-calendar-xmark text-2xl mb-2 text-slate-600"></i>
-                    <p class="font-semibold text-slate-300">לא נמצאו מבחנים או אירועים מתאימים.</p>
-                    <p class="text-xs text-slate-500 mt-1">נסו לשנות את הגדרות הסינון או להפעיל את הצגת החגים והחופשות.</p>
-                </div>
-            </template>
         </div>
-
     </main>
 
-    <!-- פוטר נקי ללא כתוביות -->
-    <footer class="mt-12 py-6 text-center text-xs text-slate-600">
-    </footer>
-
-    <!-- JS Logic -->
     <script>
-        function app() {
+        function examsApp() {
             return {
-                spreadsheetId: "1TIwnott9Y7pTugeQ5Il-U00dUe5GE6Mcc7lRqfxuCBM",
-                grades: [
-                    { id: 'ט', name: "שכבת ט'" },
-                    { id: 'י', name: "שכבת י'" },
-                    { id: 'יא', name: "שכבת יא'" },
-                    { id: 'יב', name: "שכבת יב'" }
-                ],
-                selectedGrade: 'כלל בית הספר',
-                selectedClass: 'כל השכבה',
-                showHolidays: false, // ברירת מחדל: לא מציגים חגים וחופשות
+                spreadsheetId: '1m94B_W5KlsA9-wGgP8fLz_b678B3Y48I9bT9GZp8vjE', // מזהה קובץ הגוגל שיטס שלכם
                 loading: true,
                 error: null,
-                lastRefreshed: null,
-                searchQuery: '',
-                
                 allEvents: [],
-                gradeClasses: { 'ט': [], 'י': [], 'יא': [], 'יב': [] },
-                filteredRows: [],
+                availableClasses: [],
+                selectedLayer: 'all',
+                selectedClass: 'all',
+                searchQuery: '',
+                showHolidays: false,
 
-                initApp() {
-                    this.fetchData();
-                    setInterval(() => this.fetchData(), 1800000); // רענון חצי-שעתי אוטומטי
+                init() {
+                    google.charts.load('current', {'packages':['corechart']});
+                    google.charts.setOnLoadCallback(() => this.fetchAllLayers());
                 },
 
-                get isClassDisabled() {
-                    return this.selectedGrade === 'כלל בית הספר';
-                },
-
-                async fetchData(force = false) {
+                async fetchAllLayers() {
                     this.loading = true;
                     this.error = null;
+                    const layers = [
+                        { name: 'ט', tab: 'שכבת ט' },
+                        { name: 'י', tab: 'שכבת י' },
+                        { name: 'יא', tab: 'שכבת יא' },
+                        { name: 'יב', tab: 'שכבת יב' }
+                    ];
 
                     try {
-                        const fetchPromises = this.grades.map(async (grade) => {
-                            const url = `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(grade.name)}`;
-                            const response = await fetch(url);
-                            if (!response.ok) throw new Error(`נכשל בטעינת ${grade.name}`);
-                            const csvText = await response.text();
-                            
-                            const rows = parseCSV(csvText);
-                            if (rows.length < 2) return;
-
-                            const headers = rows[0].map(h => h ? h.trim() : '');
-                            
-                            // איתור עמודות קריטיות בשיטה דינמית
-                            const dateIdx = headers.findIndex(h => h.includes('תאריך') || h.toLowerCase().includes('date'));
-                            const dayIdx = headers.findIndex(h => h.includes('יום') || h.toLowerCase().includes('day'));
-                            
-                            // חיפוש עמודת חג / אירוע
-                            let holidayIdx = headers.findIndex(h => h.includes('חג') || h.includes('חופש') || h.includes('אירוע') || h.toLowerCase().includes('holiday'));
-                            if (holidayIdx === -1) {
-                                holidayIdx = 3; // ברירת מחדל לעמודה הרביעית (עמודה D)
-                            }
-
-                            // מיפוי עמודות הכיתות (מעמודה 5 ואילך)
-                            const classCols = [];
-                            this.gradeClasses[grade.id] = [];
-                            const startSearchClassIdx = Math.max(4, holidayIdx + 1);
-                            
-                            for (let i = startSearchClassIdx; i < headers.length; i++) {
-                                if (headers[i] && headers[i].trim() !== '') {
-                                    classCols.push({ index: i, name: headers[i].trim() });
-                                    this.gradeClasses[grade.id].push(headers[i].trim());
-                                }
-                            }
-
-                            const getVal = (row, idx) => idx !== -1 && row[idx] ? row[idx].trim() : '';
-
-                            const events = rows.slice(1)
-                                .filter(row => row.length > 1 && row[dateIdx])
-                                .map(row => {
-                                    const dateStr = getVal(row, dateIdx);
-                                    let parsedDate = null;
-                                    if (dateStr) {
-                                        const parts = dateStr.split(/[\/\-\.]/);
-                                        if (parts.length >= 2) {
-                                            const day = parseInt(parts[0], 10);
-                                            const month = parseInt(parts[1], 10) - 1;
-                                            const year = parts[2] ? parseInt(parts[2], 10) : new Date().getFullYear();
-                                            const fullYear = year < 100 ? 2000 + year : year;
-                                            parsedDate = new Date(fullYear, month, day);
-                                        }
-                                    }
-
-                                    // איתור שיבוצי מבחנים לכיתות השונות ביום זה
-                                    let hasExam = false;
-                                    const exams = {};
-                                    classCols.forEach(col => {
-                                        const examSub = row[col.index] ? row[col.index].trim() : '';
-                                        if (examSub) {
-                                            hasExam = true;
-                                            exams[col.name] = examSub;
-                                        }
-                                    });
-
-                                    const holidayText = getVal(row, holidayIdx);
-
-                                    // מסננים החוצה ימים ריקים לגמרי (ללא מבחן וללא חג כלל)
-                                    if (!hasExam && !holidayText) {
-                                        return null;
-                                    }
-
-                                    return {
-                                        grade: grade.id,
-                                        dateStr,
-                                        date: parsedDate,
-                                        day: getVal(row, dayIdx),
-                                        holiday: holidayText,
-                                        exams
-                                    };
-                                });
-
-                            return events.filter(Boolean);
-                        });
-
-                        const results = await Promise.all(fetchPromises);
-                        this.allEvents = results.flat().filter(Boolean);
-                        
-                        this.lastRefreshed = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-                        this.updateData();
+                        let promises = layers.map(layer => this.fetchLayerData(layer.name, layer.tab));
+                        let results = await Promise.all(promises);
+                        this.allEvents = results.flat().sort((a, b) => a.dateObj - b.dateObj);
                     } catch (err) {
-                        console.error(err);
-                        this.error = "לא הצלחנו למשוך את הנתונים ישירות מהקובץ. ודאו שהקובץ פתוח לשיתוף ציבורי ואינו חסום.";
+                        this.error = 'שגיאה במשיכת הנתונים. ודא שקובץ הגוגל שיטס ציבורי ופתוח לצפייה.';
                     } finally {
                         this.loading = false;
                     }
                 },
 
-                get availableClasses() {
-                    if (this.selectedGrade === 'כלל בית הספר') return [];
-                    return this.gradeClasses[this.selectedGrade] || [];
-                },
+                fetchLayerData(layerName, tabName) {
+                    return new Promise((resolve, reject) => {
+                        const queryUrl = `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}/gviz/tq?sheet=${encodeURIComponent(tabName)}&tq=SELECT*`;
+                        const query = new google.visualization.Query(queryUrl);
 
-                onGradeChange() {
-                    this.selectedClass = 'כל השכבה';
-                    this.updateData();
-                },
-
-                updateData() {
-                    let tempRows = [];
-                    let rowIdCounter = 1;
-
-                    this.allEvents.forEach(event => {
-                        // 1. סינון שכבות
-                        if (this.selectedGrade !== 'כלל בית הספר' && event.grade !== this.selectedGrade) {
-                            return;
-                        }
-
-                        // 2. הוספת חג/חופשה במידה והצ'קבוקס דולק
-                        if (this.showHolidays && event.holiday) {
-                            tempRows.push({
-                                id: 'h-' + rowIdCounter++,
-                                day: event.day,
-                                dateStr: event.dateStr,
-                                date: event.date,
-                                subject: event.holiday,
-                                target: 'שכבת ' + event.grade,
-                                isHoliday: true,
-                                grade: event.grade
-                            });
-                        }
-
-                        // 3. קיבוץ מבחנים לפי נושא (Subject) כדי לזהות האם המבחן הוא שכבתי או כיתתי
-                        let subjectGroups = {}; // מבנה: { "מתמטיקה": ["ט1", "ט2"] }
-                        Object.entries(event.exams).forEach(([cls, subj]) => {
-                            // סינון לפי כיתה ספציפית אם נבחרה
-                            if (this.selectedClass !== 'כל השכבה' && cls !== this.selectedClass) {
-                                return;
-                            }
-                            if (!subjectGroups[subj]) {
-                                subjectGroups[subj] = [];
-                            }
-                            subjectGroups[subj].push(cls);
-                        });
-
-                        // 4. בניית שורת המבחן לפי חוקי התצוגה המבוקשים
-                        Object.entries(subjectGroups).forEach(([subj, classes]) => {
-                            if (classes.length === 0) return;
-
-                            let target = '';
-                            const totalClassesInGrade = this.gradeClasses[event.grade] || [];
+                        query.send(response => {
+                            if (response.isError()) return resolve([]);
                             
-                            // בדיקה: האם המבחן משותף לכלל כיתות השכבה (למשל כל כיתות ט' נבחנות באנגלית באותו יום)
-                            const isAllClasses = totalClassesInGrade.length > 0 && 
-                                                 totalClassesInGrade.every(c => event.exams[c] === subj);
+                            const dataTable = response.getDataTable();
+                            const numRows = dataTable.getNumberOfRows();
+                            const parsedEvents = [];
 
-                            if (isAllClasses && this.selectedClass === 'כל השכבה') {
-                                // אם זה לכל השכבה ומוגדר כ"כל השכבה" -> מציגים רק את שם השכבה
-                                target = 'שכבת ' + event.grade;
-                            } else {
-                                // אם זה ייחודי לכיתה או כיתות מסוימות -> מציגים רק את שמות הכיתות
-                                target = classes.join(', ');
+                            for (let i = 0; i < numRows; i++) {
+                                const dateValue = dataTable.getValue(i, 0); // עמודה A: תאריך
+                                const dayValue = dataTable.getValue(i, 1);  // עמודה B: יום בשבוע
+                                const testValue = dataTable.getValue(i, 6); // עמודה G: מבחן
+
+                                if (!dateValue || !testValue) continue;
+
+                                let rawDate = this.parseGoogleDate(dateValue);
+                                if (!rawDate) continue;
+
+                                const isHoliday = String(testValue).includes('חופש') || String(testValue).includes('חג');
+
+                                // סריקת עמודות הכיתות (C, D, E, F) לבדיקת שיבוץ ייחודי
+                                let targetClasses = [];
+                                for (let col = 2; col <= 5; col++) {
+                                    let cellVal = dataTable.getValue(i, col);
+                                    if (cellVal && String(cellVal).trim() !== '') {
+                                        let colLabel = dataTable.getColumnLabel(col) || `${layerName}${col-1}`;
+                                        targetClasses.push(colLabel);
+                                    }
+                                }
+
+                                // בניית תגית הייעוד (שכבה מול כיתה ספציפית)
+                                let targetDisplay = `שכבת ${layerName}'`;
+                                let specificClass = 'all';
+                                if (targetClasses.length === 1) {
+                                    targetDisplay = targetClasses[0];
+                                    specificClass = targetClasses[0];
+                                }
+
+                                parsedEvents.push({
+                                    id: `${layerName}-${i}-${rawDate.getTime()}`,
+                                    dateObj: rawDate,
+                                    formattedDate: this.formatDate(rawDate),
+                                    dayOfWeek: dayValue || this.getDayName(rawDate),
+                                    title: String(testValue).trim(),
+                                    layer: layerName,
+                                    specificClass: specificClass,
+                                    isHoliday: isHoliday,
+                                    targetDisplay: isHoliday ? 'חופשה / מועד' : targetDisplay
+                                });
                             }
-
-                            // ניקוי כפילויות במקרה והנושא כבר מכיל את המילה "מבחן"
-                            const cleanSubject = subj.includes('מבחן') || subj.includes('בוחן') || subj.includes('הערכה')
-                                ? subj 
-                                : 'מבחן ב-' + subj;
-
-                            tempRows.push({
-                                id: 'e-' + rowIdCounter++,
-                                day: event.day,
-                                dateStr: event.dateStr,
-                                date: event.date,
-                                subject: cleanSubject,
-                                target: target,
-                                isHoliday: false,
-                                grade: event.grade
-                            });
+                            resolve(parsedEvents);
                         });
                     });
-
-                    // 5. סינון חופשי (חיפוש)
-                    if (this.searchQuery && this.searchQuery.trim() !== '') {
-                        const query = this.searchQuery.trim().toLowerCase();
-                        tempRows = tempRows.filter(row => 
-                            row.subject.toLowerCase().includes(query) ||
-                            row.target.toLowerCase().includes(query) ||
-                            row.dateStr.includes(query)
-                        );
-                    }
-
-                    // מיון כרונולוגי של הלוח
-                    tempRows.sort((a, b) => {
-                        if (!a.date) return 1;
-                        if (!b.date) return -1;
-                        return a.date - b.date;
-                    });
-
-                    this.filteredRows = tempRows;
                 },
 
-                formatDateShort(dateStr) {
-                    if (!dateStr) return '';
-                    const parts = dateStr.split(/[\/\-\.]/);
-                    if (parts.length >= 2) {
-                        return `${parts[0]}/${parts[1]}`;
+                handleLayerChange() {
+                    this.selectedClass = 'all';
+                    if (this.selectedLayer === 'all') {
+                        this.availableClasses = [];
+                        return;
                     }
-                    return dateStr;
-                }
-            };
-        }
+                    // מיפוי דינמי של כיתות ייחודיות הקיימות בשכבה שנבחרה
+                    let classesSet = new Set();
+                    this.allEvents
+                        .filter(e => e.layer === this.selectedLayer && e.specificClass !== 'all')
+                        .forEach(e => classesSet.add(e.specificClass));
+                    
+                    this.availableClasses = Array.from(classesSet).sort();
+                },
 
-        // פארסר CSV אמין ותקני
-        function parseCSV(text) {
-            const lines = [];
-            let row = [""];
-            let insideQuote = false;
+                get filteredEvents() {
+                    return this.allEvents.filter(event => {
+                        // סינון ברירת מחדל של חגים וחופשות
+                        if (!this.showHolidays && event.isHoliday) return false;
 
-            for (let i = 0; i < text.length; i++) {
-                const char = text[i];
-                const nextChar = text[i + 1];
+                        // סינון לפי שכבה
+                        if (this.selectedLayer !== 'all' && event.layer !== this.selectedLayer) return false;
 
-                if (char === '"') {
-                    if (insideQuote && nextChar === '"') {
-                        row[row.length - 1] += '"';
-                        i++;
-                    } else {
-                        insideQuote = !insideQuote;
+                        // סינון לפי כיתה ספציפית
+                        if (this.selectedClass !== 'all' && event.specificClass !== 'all' && event.specificClass !== this.selectedClass) return false;
+
+                        // סינון לפי חיפוש טקסט חופשי
+                        if (this.searchQuery.trim() !== '') {
+                            const query = this.searchQuery.toLowerCase();
+                            return event.title.toLowerCase().includes(query) || 
+                                   event.targetDisplay.toLowerCase().includes(query) ||
+                                   event.formattedDate.includes(query);
+                        }
+
+                        return true;
+                    });
+                },
+
+                parseGoogleDate(dateVal) {
+                    if (dateVal instanceof Date) return dateVal;
+                    if (typeof dateVal === 'string') {
+                        if (dateVal.startsWith('Date(')) {
+                            let parts = dateVal.match(/\d+/g);
+                            if (parts) return new Date(parts[0], parts[1], parts[2]);
+                        }
+                        let timestamp = Date.parse(dateVal);
+                        if (!isNaN(timestamp)) return new Date(timestamp);
                     }
-                } else if (char === ',' && !insideQuote) {
-                    row.push('');
-                } else if ((char === '\r' || char === '\n') && !insideQuote) {
-                    if (char === '\r' && nextChar === '\n') i++;
-                    lines.push(row);
-                    row = [""];
-                } else {
-                    row[row.length - 1] += char;
+                    return null;
+                },
+
+                formatDate(date) {
+                    return date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                },
+
+                getDayName(date) {
+                    return date.toLocaleDateString('he-IL', { weekday: 'short' });
                 }
             }
-            if (row.length > 1 || row[0] !== '') {
-                lines.push(row);
-            }
-            return lines;
         }
     </script>
-
 </body>
 </html>
