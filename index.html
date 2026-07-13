@@ -27,18 +27,18 @@
             
             <!-- Logo and Title -->
             <div class="flex items-center gap-4">
-                <div class="bg-white p-1.5 rounded-xl shadow-lg max-w-[150px] md:max-w-[180px]">
-                    <img src="לוגו דרכא רקע לבן (1).jpeg" alt="תיכון דרכא" class="w-full h-auto object-contain">
+                <div class="max-w-[180px] md:max-w-[220px]">
+                    <img src="לוגו דרכא שקוף.png" alt="תיכון דרכא" class="w-full h-auto object-contain">
                 </div>
-                <div>
-                    <h1 class="text-xl md:text-2xl font-bold tracking-tight text-white">לוח בחינות ואירועים</h1>
+                <div class="border-r border-gray-700 pr-4 py-1 hidden sm:block">
+                    <h1 class="text-xl font-bold tracking-tight text-white">לוח בחינות ואירועים</h1>
                 </div>
             </div>
 
             <!-- Filters Grid -->
             <div class="flex flex-wrap items-center gap-3 bg-gray-900 p-2 rounded-xl border border-gray-800/80 w-full md:w-auto">
                 <!-- Dropdown: Layer -->
-                <div class="flex-1 sm:flex-initial min-w-[120px]">
+                <div class="flex-1 sm:flex-initial min-w-[130px]">
                     <select x-model="selectedLayer" @change="handleLayerChange()" class="w-full bg-gray-800 text-sm rounded-lg border border-gray-700 px-3 py-2 text-white focus:outline-none focus:border-emerald-500 transition">
                         <option value="all">כלל בית הספר</option>
                         <option value="ט">שכבת ט'</option>
@@ -49,7 +49,7 @@
                 </div>
 
                 <!-- Dropdown: Class -->
-                <div class="flex-1 sm:flex-initial min-w-[100px]">
+                <div class="flex-1 sm:flex-initial min-w-[110px]">
                     <select x-model="selectedClass" :disabled="selectedLayer === 'all'" class="w-full bg-gray-800 text-sm rounded-lg border border-gray-700 px-3 py-2 text-white focus:outline-none focus:border-emerald-500 transition disabled:opacity-40 disabled:cursor-not-allowed">
                         <option value="all">כל השכבה</option>
                         <template x-for="cls in availableClasses" :key="cls">
@@ -59,18 +59,12 @@
                 </div>
 
                 <!-- Input: Search -->
-                <div class="w-full sm:w-48 relative">
+                <div class="w-full sm:w-52 relative">
                     <input type="text" x-model="searchQuery" placeholder="חיפוש חופשי..." class="w-full bg-gray-800 text-sm rounded-lg border border-gray-700 pr-8 pl-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition">
                     <span class="absolute right-2.5 top-2.5 text-gray-500">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </span>
                 </div>
-
-                <!-- Toggle: Holidays -->
-                <label class="flex items-center gap-2 cursor-pointer select-none px-2 py-1.5 rounded-lg hover:bg-gray-800/60 transition">
-                    <input type="checkbox" x-model="showHolidays" class="rounded border-gray-700 text-emerald-500 bg-gray-800 focus:ring-0 focus:ring-offset-0 w-4 h-4">
-                    <span class="text-xs font-medium text-gray-300">הצג חגים וחופשות</span>
-                </label>
             </div>
 
         </div>
@@ -125,7 +119,6 @@
     <script>
         function examsApp() {
             return {
-                // מזהה הקובץ המעודכן שסיפקת
                 spreadsheetId: '1TIwnott9Y7pTugeQ5Il-U00dUe5GE6Mcc7lRqfxuCBM', 
                 loading: true,
                 error: null,
@@ -134,7 +127,6 @@
                 selectedLayer: 'all',
                 selectedClass: 'all',
                 searchQuery: '',
-                showHolidays: false,
 
                 init() {
                     google.charts.load('current', {'packages':['corechart']});
@@ -145,14 +137,13 @@
                     this.loading = true;
                     this.error = null;
 
-                    // פנייה ישירה לכרטיסיית הריכוז Looker בקובץ החדש
                     const queryUrl = `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}/gviz/tq?sheet=Looker&tq=SELECT*`;
                     const query = new google.visualization.Query(queryUrl);
 
                     query.send(response => {
                         this.loading = false;
                         if (response.isError()) {
-                            this.error = 'שגיאה במשיכת הנתונים. ודא שכרטיסיית Looker קיימת ושקובץ הגיליון מוגדר כציבורי ("כל מי שקיבל את הקישור יכול לצפות").';
+                            this.error = 'שגיאה במשיכת הנתונים. ודא שכרטיסיית Looker קיימת ושקובץ הגיליון מוגדר כציבורי.';
                             return;
                         }
                         
@@ -161,10 +152,10 @@
                         const parsedEvents = [];
 
                         for (let i = 0; i < numRows; i++) {
-                            const dateValue = dataTable.getValue(i, 0);   // עמודה A: תאריך
-                            const dayValue = dataTable.getValue(i, 1);    // עמודה B: יום בשבוע
-                            const classValue = dataTable.getValue(i, 2);  // עמודה C: כיתת יעד (למשל ט'1, ט'2)
-                            const eventValue = dataTable.getValue(i, 3);  // עמודה D: המבחן / האירוע
+                            const dateValue = dataTable.getValue(i, 0);   
+                            const dayValue = dataTable.getValue(i, 1);    
+                            const classValue = dataTable.getValue(i, 2);  
+                            const eventValue = dataTable.getValue(i, 3);  
 
                             if (!dateValue || !eventValue) continue;
 
@@ -174,14 +165,12 @@
                             const classStr = classValue ? String(classValue).trim() : '';
                             const eventStr = String(eventValue).trim();
 
-                            // בדיקה האם מדובר ביום חופש או חג
                             const isHoliday = classStr.includes('חופש') || classStr.includes('חג') || classStr.includes('כללי') || 
                                               eventStr.includes('חופש') || eventStr.includes('חג') || eventStr.includes('ניסיון');
 
                             let layer = 'all';
                             let specificClass = 'all';
 
-                            // חילוץ חכם של השכבה והכיתה מתוך עמודה C באמצעות ביטויים רגולריים
                             if (/^ט[']?\d+/.test(classStr)) {
                                 layer = 'ט';
                                 specificClass = classStr;
@@ -195,7 +184,6 @@
                                 layer = 'יב';
                                 specificClass = classStr;
                             } else {
-                                // התאמה למקרים של שם שכבה כללי ללא מספר כיתה
                                 if (classStr.includes('ט')) layer = 'ט';
                                 else if (classStr.includes('יא')) layer = 'יא';
                                 else if (classStr.includes('יב')) layer = 'יב';
@@ -220,7 +208,6 @@
                             });
                         }
 
-                        // מיון האירועים לפי סדר כרונולוגי של תאריכים
                         this.allEvents = parsedEvents.sort((a, b) => a.dateObj - b.dateObj);
                         this.handleLayerChange();
                     });
@@ -233,7 +220,6 @@
                         return;
                     }
                     
-                    // שליפת רשימת הכיתות הקיימות בשכבה שנבחרה כדי לעדכן את הדרופדאון השני
                     let classesSet = new Set();
                     this.allEvents
                         .filter(e => e.layer === this.selectedLayer && e.specificClass !== 'all')
@@ -244,16 +230,12 @@
 
                 get filteredEvents() {
                     return this.allEvents.filter(event => {
-                        // סינון חופשות (מוסתרות כברירת מחדל)
-                        if (!this.showHolidays && event.isHoliday) return false;
+                        // מעכשיו חופשות מוצגות תמיד ואינן מסוננות החוצה
 
-                        // סינון לפי השכבה שנבחרה
                         if (this.selectedLayer !== 'all' && event.layer !== this.selectedLayer) return false;
 
-                        // סינון לפי כיתה ספציפית בשכבה
                         if (this.selectedClass !== 'all' && event.specificClass !== 'all' && event.specificClass !== this.selectedClass) return false;
 
-                        // סינון לפי תיבת החיפוש החופשי
                         if (this.searchQuery.trim() !== '') {
                             const query = this.searchQuery.toLowerCase();
                             return event.title.toLowerCase().includes(query) || 
