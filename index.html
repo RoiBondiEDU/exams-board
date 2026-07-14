@@ -103,11 +103,11 @@
                         <span class="text-sm sm:text-base text-gray-100 font-medium block truncate" :title="event.title" x-text="event.title"></span>
                     </div>
 
-                    <!-- Left: Target Class / Layer Tag -->
+                    <!-- Left: Target Class / Layer Tag (Grouped) -->
                     <div class="shrink-0">
                         <span :class="event.isHoliday ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'" 
                               class="text-xs font-semibold px-2.5 py-1 rounded-md border" 
-                              x-text="event.specificClass === 'all' && !event.isHoliday ? `שכבת ${event.layer}'` : event.targetDisplay">
+                              x-text="event.targetDisplay">
                         </span>
                     </div>
 
@@ -149,7 +149,7 @@
                         
                         const dataTable = response.getDataTable();
                         const numRows = dataTable.getNumberOfRows();
-                        const parsedEvents = [];
+                        const rawEvents = [];
 
                         for (let i = 0; i < numRows; i++) {
                             const dateValue = dataTable.getValue(i, 0);   
@@ -162,7 +162,7 @@
                             let rawDate = this.parseGoogleDate(dateValue);
                             if (!rawDate) continue;
 
-                            const classStr = classValue ? String(classValue).trim().replace(/['"׳]/g, '') : '';
+                            const classStr = classValue ? String(classValue).trim() : '';
                             const eventStr = String(eventValue).trim();
 
                             const isHoliday = classStr.includes('חופש') || classStr.includes('חג') || classStr.includes('כללי') || 
@@ -171,34 +171,28 @@
                             let layer = 'all';
                             let specificClass = 'all';
 
-                            // חילוץ מדויק של השכבה והכיתה הספציפית
-                            if (/^ט\d+/.test(classStr)) {
+                            const cleanClassStr = classStr.replace(/['"׳]/g, '');
+
+                            if (/^ט\d+/.test(cleanClassStr)) {
                                 layer = 'ט';
-                                specificClass = classValue.trim();
-                            } else if (/^יא\d+/.test(classStr)) {
+                                specificClass = classStr;
+                            } else if (/^יא\d+/.test(cleanClassStr)) {
                                 layer = 'יא';
-                                specificClass = classValue.trim();
-                            } else if (/^יב\d+/.test(classStr)) {
+                                specificClass = classStr;
+                            } else if (/^יב\d+/.test(cleanClassStr)) {
                                 layer = 'יב';
-                                specificClass = classValue.trim();
-                            } else if (/^י\d+/.test(classStr)) {
+                                specificClass = classStr;
+                            } else if (/^י\d+/.test(cleanClassStr)) {
                                 layer = 'י';
-                                specificClass = classValue.trim();
+                                specificClass = classStr;
                             } else {
-                                // למקרה שרשום רק שם השכבה ללא מספר (מבחן שכבתי)
-                                if (classStr === 'ט') layer = 'ט';
-                                else if (classStr === 'י') layer = 'י';
-                                else if (classStr === 'יא') layer = 'יא';
-                                else if (classStr === 'יב') layer = 'יב';
+                                if (cleanClassStr === 'ט') layer = 'ט';
+                                else if (cleanClassStr === 'י') layer = 'י';
+                                else if (cleanClassStr === 'יא') layer = 'יא';
+                                else if (cleanClassStr === 'יב') layer = 'יב';
                             }
 
-                            let targetDisplay = classValue ? classValue.trim() : 'כללי';
-                            if (isHoliday && (classStr.includes('חופש') || classStr.includes('חג'))) {
-                                targetDisplay = 'חופשה / מועד';
-                            }
-
-                            parsedEvents.push({
-                                id: `looker-${i}-${rawDate.getTime()}`,
+                            rawEvents.push({
                                 dateObj: rawDate,
                                 formattedDate: this.formatDate(rawDate),
                                 dayOfWeek: dayValue || this.getDayName(rawDate),
@@ -206,11 +200,70 @@
                                 layer: layer,
                                 specificClass: specificClass,
                                 isHoliday: isHoliday,
-                                targetDisplay: targetDisplay
+                                classRawValue: classStr
                             });
                         }
 
-                        this.allEvents = parsedEvents.sort((a, b) => a.dateObj - b.dateObj);
+                        // ביצוע איחוד (Grouping) של מבחנים זהים באותו התאריך
+                        const groupedMap = {};
+                        rawEvents.forEach(event => {
+                            const dateKey = event.dateObj.getTime();
+                            const titleKey = event.title.toLowerCase().trim();
+                            const groupKey = `${dateKey}_${titleKey}`;
+
+                            if (!groupedMap[groupKey]) {
+                                groupedMap[groupKey] = {
+                                    dateObj: event.dateObj,
+                                    formattedDate: event.formattedDate,
+                                    dayOfWeek: event.dayOfWeek,
+                                    title: event.title,
+                                    isHoliday: event.isHoliday,
+                                    layers: new Set([event.layer]),
+                                    classes: new Set(event.specificClass !== 'all' ? [event.specificClass] : []),
+                                    rawTargets: new Set([event.classRawValue])
+                                };
+                            } else {
+                                groupedMap[groupKey].layers.add(event.layer);
+                                if (event.specificClass !== 'all') {
+                                    groupedMap[groupKey].classes.add(event.specificClass);
+                                }
+                                groupedMap[groupKey].rawTargets.add(event.classRawValue);
+                                if (event.isHoliday) {
+                                    groupedMap[groupKey].isHoliday = true;
+                                }
+                            }
+                        });
+
+                        // המרה מ-Map חזרה למערך מסודר
+                        this.allEvents = Object.values(groupedMap).map((g, idx) => {
+                            const classesArr = Array.from(g.classes).sort();
+                            const layersArr = Array.from(g.layers);
+                            const rawTargetsArr = Array.from(g.rawTargets).filter(t => t !== '');
+
+                            let targetDisplay = '';
+                            if (g.isHoliday) {
+                                targetDisplay = 'חופשה / מועד';
+                            } else if (classesArr.length > 0) {
+                                targetDisplay = classesArr.join(', ');
+                            } else if (rawTargetsArr.length > 0) {
+                                targetDisplay = rawTargetsArr.join(', ');
+                            } else {
+                                targetDisplay = 'כללי';
+                            }
+
+                            return {
+                                id: `grouped-${idx}-${g.dateObj.getTime()}`,
+                                dateObj: g.dateObj,
+                                formattedDate: g.formattedDate,
+                                dayOfWeek: g.dayOfWeek,
+                                title: g.title,
+                                isHoliday: g.isHoliday,
+                                layers: layersArr, 
+                                classes: classesArr, 
+                                targetDisplay: targetDisplay
+                            };
+                        }).sort((a, b) => a.dateObj - b.dateObj);
+
                         this.handleLayerChange();
                     });
                 },
@@ -223,19 +276,24 @@
                     }
                     
                     let classesSet = new Set();
-                    this.allEvents
-                        .filter(e => e.layer === this.selectedLayer && e.specificClass !== 'all')
-                        .forEach(e => classesSet.add(e.specificClass));
+                    this.allEvents.forEach(e => {
+                        if (e.layers.includes(this.selectedLayer)) {
+                            e.classes.forEach(c => classesSet.add(c));
+                        }
+                    });
                     
                     this.availableClasses = Array.from(classesSet).sort();
                 },
 
                 get filteredEvents() {
                     return this.allEvents.filter(event => {
-                        if (this.selectedLayer !== 'all' && event.layer !== this.selectedLayer) return false;
+                        // סינון לפי שכבה (האם האירוע משתייך לשכבה שנבחרה)
+                        if (this.selectedLayer !== 'all' && !event.layers.includes(this.selectedLayer)) return false;
 
-                        if (this.selectedClass !== 'all' && event.specificClass !== 'all' && event.specificClass !== this.selectedClass) return false;
+                        // סינון לפי כיתה ספציפית (האם הכיתה שנבחרה נמצאת בתוך רשימת הכיתות של האירוע המאוחד)
+                        if (this.selectedClass !== 'all' && event.classes.length > 0 && !event.classes.includes(this.selectedClass)) return false;
 
+                        // סינון לפי חיפוש טקסט חופשי
                         if (this.searchQuery.trim() !== '') {
                             const query = this.searchQuery.toLowerCase();
                             return event.title.toLowerCase().includes(query) || 
