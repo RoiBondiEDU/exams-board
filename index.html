@@ -103,11 +103,11 @@
                         <span class="text-sm sm:text-base text-gray-100 font-medium block truncate" :title="event.title" x-text="event.title"></span>
                     </div>
 
-                    <!-- Left: Target Class / Holiday Tag -->
+                    <!-- Left: Target Class / Layer Tag -->
                     <div class="shrink-0">
                         <span :class="event.isHoliday ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'" 
                               class="text-xs font-semibold px-2.5 py-1 rounded-md border" 
-                              x-text="event.targetDisplay">
+                              x-text="event.specificClass === 'all' && !event.isHoliday ? `שכבת ${event.layer}'` : event.targetDisplay">
                         </span>
                     </div>
 
@@ -162,7 +162,7 @@
                             let rawDate = this.parseGoogleDate(dateValue);
                             if (!rawDate) continue;
 
-                            const classStr = classValue ? String(classValue).trim() : '';
+                            const classStr = classValue ? String(classValue).trim().replace(/['"׳]/g, '') : '';
                             const eventStr = String(eventValue).trim();
 
                             const isHoliday = classStr.includes('חופש') || classStr.includes('חג') || classStr.includes('כללי') || 
@@ -171,26 +171,28 @@
                             let layer = 'all';
                             let specificClass = 'all';
 
-                            if (/^ט[']?\d+/.test(classStr)) {
+                            // חילוץ מדויק של השכבה והכיתה הספציפית
+                            if (/^ט\d+/.test(classStr)) {
                                 layer = 'ט';
-                                specificClass = classStr;
-                            } else if (/^י[']?\d+/.test(classStr) && !classStr.startsWith('יא') && !classStr.startsWith('יב')) {
-                                layer = 'י';
-                                specificClass = classStr;
-                            } else if (/^יא[']?\d+/.test(classStr)) {
+                                specificClass = classValue.trim();
+                            } else if (/^יא\d+/.test(classStr)) {
                                 layer = 'יא';
-                                specificClass = classStr;
-                            } else if (/^יב[']?\d+/.test(classStr)) {
+                                specificClass = classValue.trim();
+                            } else if (/^יב\d+/.test(classStr)) {
                                 layer = 'יב';
-                                specificClass = classStr;
+                                specificClass = classValue.trim();
+                            } else if (/^י\d+/.test(classStr)) {
+                                layer = 'י';
+                                specificClass = classValue.trim();
                             } else {
-                                if (classStr.includes('ט')) layer = 'ט';
-                                else if (classStr.includes('יא')) layer = 'יא';
-                                else if (classStr.includes('יב')) layer = 'יב';
-                                else if (classStr.includes('י')) layer = 'י';
+                                // למקרה שרשום רק שם השכבה ללא מספר (מבחן שכבתי)
+                                if (classStr === 'ט') layer = 'ט';
+                                else if (classStr === 'י') layer = 'י';
+                                else if (classStr === 'יא') layer = 'יא';
+                                else if (classStr === 'יב') layer = 'יב';
                             }
 
-                            let targetDisplay = classStr || 'כללי';
+                            let targetDisplay = classValue ? classValue.trim() : 'כללי';
                             if (isHoliday && (classStr.includes('חופש') || classStr.includes('חג'))) {
                                 targetDisplay = 'חופשה / מועד';
                             }
@@ -230,8 +232,6 @@
 
                 get filteredEvents() {
                     return this.allEvents.filter(event => {
-                        // מעכשיו חופשות מוצגות תמיד ואינן מסוננות החוצה
-
                         if (this.selectedLayer !== 'all' && event.layer !== this.selectedLayer) return false;
 
                         if (this.selectedClass !== 'all' && event.specificClass !== 'all' && event.specificClass !== this.selectedClass) return false;
