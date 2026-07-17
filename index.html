@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -18,7 +19,7 @@
         body { font-family: 'Heebo', sans-serif; }
         [x-cloak] { display: none !important; }
         
-        /* אפקט התרוקנות לכפתור הדלג */
+        /* אפקט התרוקנות מדויק לכפתור הדלג - רץ במשך 3 שניות קשיחות */
         .progress-fill {
             animation: shrinkWidth 3s linear forwards;
         }
@@ -28,7 +29,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen relative" x-data="examsApp()">
+<body class="bg-gray-950 text-gray-100 min-h-screen relative shadow-inner" x-data="examsApp()">
 
     <!-- מסך טעינה / פתיחה (Splash Screen) -->
     <div x-show="showSplash" 
@@ -37,7 +38,7 @@
          x-transition:leave-end="opacity-0"
          class="fixed inset-0 bg-gray-950 z-[100] flex flex-col items-center justify-between p-6 text-center select-none">
         
-        <!-- שטח ריק לאיזון הגריד -->
+        <!-- שטח ריק לאיזון הגריד במסך -->
         <div></div>
 
         <!-- מרכז המסך: לוגו גדול ומשפט השראה -->
@@ -46,7 +47,7 @@
                 <img src="לוגו דרכא שקוף.png" alt="תיכון דרכא" class="w-full h-auto object-contain">
             </div>
             <div class="h-px w-24 bg-gray-800"></div>
-            <p class="text-lg md:text-2xl font-medium text-emerald-400 leading-relaxed" x-text="motivationalQuote"></p>
+            <p class="text-xl md:text-2xl font-medium text-emerald-400 leading-relaxed" x-text="motivationalQuote"></p>
         </div>
 
         <!-- תחתית המסך: כפתור דלג אינטראקטיבי -->
@@ -120,7 +121,7 @@
         <!-- Main Content -->
         <main class="max-w-5xl mx-auto px-4 py-6">
             
-            <!-- Loading & Errors States -->
+            <!-- Loading & Errors States (מוצג ברקע/מתחת ללוח אם הטעינה של גוגל איטית) -->
             <div x-show="loading" class="flex flex-col items-center justify-center py-20 gap-3">
                 <div class="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
                 <p class="text-gray-400 text-sm">טוען נתונים ומסנכרן את הלוח...</p>
@@ -190,14 +191,15 @@
                 ],
 
                 init() {
-                    // בחירת משפט אקראי
+                    // בחירת משפט אקראי למסך הפתיחה
                     this.motivationalQuote = this.quotes[Math.floor(Math.random() * this.quotes.length)];
                     
-                    // טיימר להסרת מסך הטעינה
+                    // טיימר קשיח של 3 שניות (3000ms). רק כשנסגר הטיימר, מסך הפתיחה יורד אוטומטית.
                     setTimeout(() => {
                         this.showSplash = false;
                     }, 3000);
 
+                    // הפעלת טעינת הנתונים מגוגל ברקע
                     google.charts.load('current', {'packages':['corechart']});
                     google.charts.setOnLoadCallback(() => this.fetchLookerData());
                 },
@@ -383,4 +385,14 @@
                 },
 
                 formatDate(date) {
-                    return date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year:
+                    return date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                },
+
+                getDayName(date) {
+                    return date.toLocaleDateString('he-IL', { weekday: 'short' });
+                }
+            }
+        }
+    </script>
+</body>
+</html>
