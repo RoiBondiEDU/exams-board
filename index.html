@@ -25,9 +25,11 @@
     <header class="border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-50 px-4 py-3">
         <div class="max-w-5xl mx-auto flex flex-row items-center justify-between gap-4">
             
-            <!-- Right: Title -->
-            <div class="flex items-center">
+            <!-- Right: Title & Random Motivational Quote -->
+            <div class="flex flex-col text-right">
                 <h1 class="text-lg md:text-xl font-bold tracking-tight text-white">לוח בחינות ואירועים</h1>
+                <!-- משפט השראה אקראי מהרשימה שלך -->
+                <p class="text-xs md:text-sm text-emerald-400/95 font-medium mt-0.5" x-text="motivationalQuote"></p>
             </div>
 
             <!-- Left: Logo (Small & Left-aligned) -->
@@ -37,7 +39,7 @@
 
         </div>
 
-        <!-- Filters Grid (Separated for better layout in mobile) -->
+        <!-- Filters Grid -->
         <div class="max-w-5xl mx-auto mt-3">
             <div class="flex flex-wrap items-center gap-3 bg-gray-900 p-2 rounded-xl border border-gray-800/80 w-full">
                 <!-- Dropdown: Layer -->
@@ -129,8 +131,24 @@
                 selectedLayer: 'all',
                 selectedClass: 'all',
                 searchQuery: '',
+                motivationalQuote: '',
+                
+                // רשימת שמונת המשפטים שסיפקת
+                quotes: [
+                    "ההשקעה של היום היא ההצלחה של מחר.",
+                    "הדרך להצלחה מתחילה בהחלטה לא לוותר!",
+                    "העתיד שלכם מתחיל בהחלטות שאתם מקבלים היום.",
+                    "אל תוותרו על החלום רק כי הדרך מאתגרת.",
+                    "האמינו בעצמכם, אתם מסוגלים ליותר ממה שאתם חושבים.",
+                    "אל תשוו את עצמכם לאחרים, התקדמו בקצב שלכם.",
+                    "אל תפחדו לטעות – כך לומדים, מתקדמים ומצליחים.",
+                    "כל יום הוא הזדמנות ללמוד משהו חדש."
+                ],
 
                 init() {
+                    // בחירת משפט אקראי אחד מתוך הרשימה בזמן טעינת העמוד
+                    this.motivationalQuote = this.quotes[Math.floor(Math.random() * this.quotes.length)];
+                    
                     google.charts.load('current', {'packages':['corechart']});
                     google.charts.setOnLoadCallback(() => this.fetchLookerData());
                 },
@@ -167,7 +185,6 @@
                             const classStr = classValue ? String(classValue).trim() : '';
                             const eventStr = String(eventValue).trim();
 
-                            // הוסרה המילה 'ניסיון' מרשימת סינוני החופשה
                             const isHoliday = classStr.includes('חופש') || classStr.includes('חג') || classStr.includes('כללי') || 
                                               eventStr.includes('חופש') || eventStr.includes('חג');
 
@@ -207,7 +224,6 @@
                             });
                         }
 
-                        // ביצוע איחוד (Grouping) של מבחנים זהים באותו התאריך
                         const groupedMap = {};
                         rawEvents.forEach(event => {
                             const dateKey = event.dateObj.getTime();
@@ -237,7 +253,6 @@
                             }
                         });
 
-                        // המרה מ-Map חזרה למערך מסודר
                         this.allEvents = Object.values(groupedMap).map((g, idx) => {
                             const classesArr = Array.from(g.classes).sort();
                             const layersArr = Array.from(g.layers);
@@ -290,13 +305,10 @@
 
                 get filteredEvents() {
                     return this.allEvents.filter(event => {
-                        // סינון לפי שכבה
                         if (this.selectedLayer !== 'all' && !event.layers.includes(this.selectedLayer)) return false;
 
-                        // סינון לפי כיתה ספציפית
                         if (this.selectedClass !== 'all' && event.classes.length > 0 && !event.classes.includes(this.selectedClass)) return false;
 
-                        // סינון לפי חיפוש טקסט חופשי
                         if (this.searchQuery.trim() !== '') {
                             const query = this.searchQuery.toLowerCase();
                             return event.title.toLowerCase().includes(query) || 
