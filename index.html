@@ -28,7 +28,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen relative overflow-x-hidden" x-data="examsApp()">
+<body class="bg-gray-950 text-gray-100 min-h-screen relative" x-data="examsApp()">
 
     <!-- מסך טעינה / פתיחה (Splash Screen) -->
     <div x-show="showSplash" 
@@ -41,12 +41,12 @@
         <div></div>
 
         <!-- מרכז המסך: לוגו גדול ומשפט השראה -->
-        <div class="flex flex-col items-center max-w-lg px-4 gap-6 animate-fade-in">
+        <div class="flex flex-col items-center max-w-lg px-4 gap-6">
             <div class="w-48 md:w-64">
                 <img src="לוגו דרכא שקוף.png" alt="תיכון דרכא" class="w-full h-auto object-contain">
             </div>
             <div class="h-px w-24 bg-gray-800"></div>
-            <p class="text-base md:text-xl font-medium text-emerald-400 leading-relaxed" x-text="motivationalQuote"></p>
+            <p class="text-lg md:text-2xl font-medium text-emerald-400 leading-relaxed" x-text="motivationalQuote"></p>
         </div>
 
         <!-- תחתית המסך: כפתור דלג אינטראקטיבי -->
@@ -64,7 +64,7 @@
     </div>
 
     <!-- תוכן האתר הראשי -->
-    <div :class="showSplash ? 'h-screen overflow-hidden' : ''">
+    <div>
         <!-- Header Section -->
         <header class="border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-50 px-4 py-3">
             <div class="max-w-5xl mx-auto flex flex-row items-center justify-between gap-4">
@@ -176,7 +176,7 @@
                 selectedClass: 'all',
                 searchQuery: '',
                 motivationalQuote: '',
-                showSplash: true, // מפעיל את מסך הפתיחה כברירת מחדל
+                showSplash: true, 
                 
                 quotes: [
                     "ההשקעה של היום היא ההצלחה של מחר.",
@@ -193,7 +193,7 @@
                     // בחירת משפט אקראי
                     this.motivationalQuote = this.quotes[Math.floor(Math.random() * this.quotes.length)];
                     
-                    // טיימר לסגירת מסך הפתיחה אוטומטית אחרי 3 שניות (3000 אלפיות השנייה)
+                    // טיימר להסרת מסך הטעינה
                     setTimeout(() => {
                         this.showSplash = false;
                     }, 3000);
@@ -379,4 +379,8 @@
                         let timestamp = Date.parse(dateVal);
                         if (!isNaN(timestamp)) return new Date(timestamp);
                     }
-                    re
+                    return null;
+                },
+
+                formatDate(date) {
+                    return date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year:
