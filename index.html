@@ -17,108 +17,150 @@
     <style>
         body { font-family: 'Heebo', sans-serif; }
         [x-cloak] { display: none !important; }
+        
+        /* אפקט התרוקנות קשיח של 3 שניות לכפתור הדלג */
+        .progress-fill {
+            animation: shrinkWidth 3s linear forwards;
+        }
+        @keyframes shrinkWidth {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
     </style>
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen" x-data="examsApp()">
+<body class="bg-gray-950 text-gray-100 min-h-screen relative shadow-inner" x-data="examsApp()">
 
-    <!-- Header Section -->
-    <header class="border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-50 px-4 py-3">
-        <div class="max-w-5xl mx-auto flex flex-row items-center justify-between gap-4">
-            
-            <!-- Right: Title & Random Motivational Quote -->
-            <div class="flex flex-col text-right">
-                <h1 class="text-lg md:text-xl font-bold tracking-tight text-white">לוח בחינות ואירועים</h1>
-                <!-- משפט השראה אקראי מהרשימה שלך -->
-                <p class="text-xs md:text-sm text-emerald-400/95 font-medium mt-0.5" x-text="motivationalQuote"></p>
-            </div>
-
-            <!-- Left: Logo (Small & Left-aligned) -->
-            <div class="w-28 md:w-36 shrink-0 flex justify-end">
-                <img src="לוגו דרכא שקוף.png" alt="תיכון דרכא" class="max-h-10 md:max-h-12 w-auto object-contain">
-            </div>
-
-        </div>
-
-        <!-- Filters Grid -->
-        <div class="max-w-5xl mx-auto mt-3">
-            <div class="flex flex-wrap items-center gap-3 bg-gray-900 p-2 rounded-xl border border-gray-800/80 w-full">
-                <!-- Dropdown: Layer -->
-                <div class="flex-1 min-w-[120px]">
-                    <select x-model="selectedLayer" @change="handleLayerChange()" class="w-full bg-gray-800 text-sm rounded-lg border border-gray-700 px-3 py-2 text-white focus:outline-none focus:border-emerald-500 transition">
-                        <option value="all">כלל בית הספר</option>
-                        <option value="ט">שכבת ט'</option>
-                        <option value="י">שכבת י'</option>
-                        <option value="יא">שכבת יא'</option>
-                        <option value="יב">שכבת יב'</option>
-                    </select>
-                </div>
-
-                <!-- Dropdown: Class -->
-                <div class="flex-1 min-w-[110px]">
-                    <select x-model="selectedClass" :disabled="selectedLayer === 'all'" class="w-full bg-gray-800 text-sm rounded-lg border border-gray-700 px-3 py-2 text-white focus:outline-none focus:border-emerald-500 transition disabled:opacity-40 disabled:cursor-not-allowed">
-                        <option value="all">כל השכבה</option>
-                        <template x-for="cls in availableClasses" :key="cls">
-                            <option :value="cls" x-text="cls"></option>
-                        </template>
-                    </select>
-                </div>
-
-                <!-- Input: Search -->
-                <div class="w-full sm:w-52 relative">
-                    <input type="text" x-model="searchQuery" placeholder="חיפוש חופשי..." class="w-full bg-gray-800 text-sm rounded-lg border border-gray-700 pr-8 pl-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition">
-                    <span class="absolute right-2.5 top-2.5 text-gray-500">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </span>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="max-w-5xl mx-auto px-4 py-6">
+    <!-- מסך טעינה / פתיחה (Splash Screen) -->
+    <div x-show="showSplash" 
+         x-transition:leave="transition ease-in duration-500"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-gray-950 z-[100] flex flex-col items-center justify-between p-6 text-center select-none">
         
-        <!-- Loading & Errors States -->
-        <div x-show="loading" class="flex flex-col items-center justify-center py-20 gap-3">
-            <div class="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-gray-400 text-sm">טוען נתונים ומסנכרן את הלוח...</p>
+        <!-- שטח ריק לאיזון הגריד במסך -->
+        <div></div>
+
+        <!-- מרכז המסך: לוגו ומשפט השראה -->
+        <div class="flex flex-col items-center max-w-lg px-4 gap-6">
+            <div class="w-48 md:w-64">
+                <img src="לוגו דרכא שקוף.png" alt="תיכון דרכא" class="w-full h-auto object-contain">
+            </div>
+            <div class="h-px w-24 bg-gray-800"></div>
+            <p class="text-xl md:text-2xl font-medium text-emerald-400 leading-relaxed" x-text="motivationalQuote"></p>
         </div>
 
-        <div x-show="!loading && error" class="bg-red-950/40 border border-red-800/60 text-red-200 p-4 rounded-xl text-center" x-text="error" x-cloak></div>
-
-        <!-- Empty State -->
-        <div x-show="!loading && filteredEvents.length === 0" class="text-center py-16 bg-gray-900/20 border border-gray-800/60 rounded-xl" x-cloak>
-            <p class="text-gray-400">לא נמצאו בחינות או אירועים העונים על סינון זה.</p>
+        <!-- תחתית המסך: כפתור דלג -->
+        <div class="w-full max-w-xs mb-8">
+            <button @click="showSplash = false" class="relative w-full bg-gray-900 border border-gray-800 rounded-xl py-3 px-6 text-sm font-bold overflow-hidden text-white hover:border-gray-700 transition active:scale-[0.98]">
+                <div class="absolute inset-y-0 right-0 bg-emerald-600/20 progress-fill"></div>
+                <span class="relative z-10 flex items-center justify-center gap-2">
+                    דלג אל הלוח
+                    <svg class="w-4 h-4 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </span>
+            </button>
         </div>
+    </div>
 
-        <!-- List Layout -->
-        <div x-show="!loading && filteredEvents.length > 0" class="space-y-2" x-cloak>
-            <template x-for="event in filteredEvents" :key="event.id">
-                <div class="flex items-center justify-between gap-4 p-3 bg-gray-900/60 hover:bg-gray-900 border border-gray-800 hover:border-gray-700/80 rounded-xl transition duration-150">
-                    
-                    <!-- Right: Date & Day Box -->
-                    <div class="flex items-center gap-2 bg-gray-800/80 border border-gray-700 px-3 py-1.5 rounded-lg shrink-0 text-xs sm:text-sm font-medium text-gray-200">
-                        <span x-text="event.formattedDate"></span>
-                        <span class="text-gray-500 font-normal">|</span>
-                        <span x-text="event.dayOfWeek" class="text-emerald-400 font-bold"></span>
+    <!-- תוכן האתר הראשי -->
+    <div>
+        <!-- Header Section -->
+        <header class="border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-50 px-4 py-3">
+            <div class="max-w-5xl mx-auto flex flex-row items-center justify-between gap-4">
+                
+                <!-- Right: Title & Random Motivational Quote -->
+                <div class="flex flex-col text-right">
+                    <h1 class="text-lg md:text-xl font-bold tracking-tight text-white">לוח בחינות ואירועים</h1>
+                    <p class="text-xs md:text-sm text-emerald-400/95 font-medium mt-0.5" x-text="motivationalQuote"></p>
+                </div>
+
+                <!-- Left: Logo -->
+                <div class="w-28 md:w-36 shrink-0 flex justify-end">
+                    <img src="לוגו דרכא שקוף.png" alt="תיכון דרכא" class="max-h-10 md:max-h-12 w-auto object-contain">
+                </div>
+
+            </div>
+
+            <!-- Filters Grid -->
+            <div class="max-w-5xl mx-auto mt-3">
+                <div class="flex flex-wrap items-center gap-3 bg-gray-900 p-2 rounded-xl border border-gray-800/80 w-full">
+                    <!-- Dropdown: Layer -->
+                    <div class="flex-1 min-w-[120px]">
+                        <select x-model="selectedLayer" @change="handleLayerChange()" class="w-full bg-gray-800 text-sm rounded-lg border border-gray-700 px-3 py-2 text-white focus:outline-none focus:border-emerald-500 transition">
+                            <option value="all">כלל בית הספר</option>
+                            <option value="ט">שכבת ט'</option>
+                            <option value="י">שכבת י'</option>
+                            <option value="יא">שכבת יא'</option>
+                            <option value="יב">שכבת יב'</option>
+                        </select>
                     </div>
 
-                    <!-- Center: Subject Text -->
-                    <div class="flex-1 min-w-0 text-right">
-                        <span class="text-sm sm:text-base text-gray-100 font-medium block truncate" :title="event.title" x-text="event.title"></span>
+                    <!-- Dropdown: Class -->
+                    <div class="flex-1 min-w-[110px]">
+                        <select x-model="selectedClass" :disabled="selectedLayer === 'all'" class="w-full bg-gray-800 text-sm rounded-lg border border-gray-700 px-3 py-2 text-white focus:outline-none focus:border-emerald-500 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                            <option value="all">כל השכבה</option>
+                            <template x-for="cls in availableClasses" :key="cls">
+                                <option :value="cls" x-text="cls"></option>
+                            </template>
+                        </select>
                     </div>
 
-                    <!-- Left: Target Class / Layer Tag (Grouped) -->
-                    <div class="shrink-0">
-                        <span :class="event.isHoliday ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'" 
-                              class="text-xs font-semibold px-2.5 py-1 rounded-md border" 
-                              x-text="event.targetDisplay">
+                    <!-- Input: Search -->
+                    <div class="w-full sm:w-52 relative">
+                        <input type="text" x-model="searchQuery" placeholder="חיפוש חופשי..." class="w-full bg-gray-800 text-sm rounded-lg border border-gray-700 pr-8 pl-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 transition">
+                        <span class="absolute right-2.5 top-2.5 text-gray-500">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </span>
                     </div>
-
                 </div>
-            </template>
-        </div>
-    </main>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-5xl mx-auto px-4 py-6">
+            
+            <!-- Loading & Errors States -->
+            <div x-show="loading" class="flex flex-col items-center justify-center py-20 gap-3">
+                <div class="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-gray-400 text-sm">טוען נתונים ומסנכרן את הלוח...</p>
+            </div>
+
+            <div x-show="!loading && error" class="bg-red-950/40 border border-red-800/60 text-red-200 p-4 rounded-xl text-center" x-text="error" x-cloak></div>
+
+            <!-- Empty State -->
+            <div x-show="!loading && filteredEvents.length === 0" class="text-center py-16 bg-gray-900/20 border border-gray-800/60 rounded-xl" x-cloak>
+                <p class="text-gray-400">לא נמצאו בחינות או אירועים העונים על סינון זה.</p>
+            </div>
+
+            <!-- List Layout -->
+            <div x-show="!loading && filteredEvents.length > 0" class="space-y-2" x-cloak>
+                <template x-for="event in filteredEvents" :key="event.id">
+                    <div class="flex items-center justify-between gap-4 p-3 bg-gray-900/60 hover:bg-gray-900 border border-gray-800 hover:border-gray-700/80 rounded-xl transition duration-150">
+                        
+                        <!-- Right: Date & Day Box -->
+                        <div class="flex items-center gap-2 bg-gray-800/80 border border-gray-700 px-3 py-1.5 rounded-lg shrink-0 text-xs sm:text-sm font-medium text-gray-200">
+                            <span x-text="event.formattedDate"></span>
+                            <span class="text-gray-500 font-normal">|</span>
+                            <span x-text="event.dayOfWeek" class="text-emerald-400 font-bold"></span>
+                        </div>
+
+                        <!-- Center: Subject Text -->
+                        <div class="flex-1 min-w-0 text-right">
+                            <span class="text-sm sm:text-base text-gray-100 font-medium block truncate" :title="event.title" x-text="event.title"></span>
+                        </div>
+
+                        <!-- Left: Target Class / Layer Tag -->
+                        <div class="shrink-0">
+                            <span :class="event.isHoliday ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'" 
+                                  class="text-xs font-semibold px-2.5 py-1 rounded-md border" 
+                                  x-text="event.targetDisplay">
+                            </span>
+                        </div>
+
+                    </div>
+                </template>
+            </div>
+        </main>
+    </div>
 
     <script>
         function examsApp() {
@@ -132,8 +174,8 @@
                 selectedClass: 'all',
                 searchQuery: '',
                 motivationalQuote: '',
+                showSplash: true, // משתנה למסך הפתיחה
                 
-                // רשימת שמונת המשפטים שסיפקת
                 quotes: [
                     "ההשקעה של היום היא ההצלחה של מחר.",
                     "הדרך להצלחה מתחילה בהחלטה לא לוותר!",
@@ -146,9 +188,13 @@
                 ],
 
                 init() {
-                    // בחירת משפט אקראי אחד מתוך הרשימה בזמן טעינת העמוד
                     this.motivationalQuote = this.quotes[Math.floor(Math.random() * this.quotes.length)];
                     
+                    // טיימר של 3 שניות קשיחות לסגירת המסך אוטומטית
+                    setTimeout(() => {
+                        this.showSplash = false;
+                    }, 3000);
+
                     google.charts.load('current', {'packages':['corechart']});
                     google.charts.setOnLoadCallback(() => this.fetchLookerData());
                 },
